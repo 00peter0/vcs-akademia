@@ -266,7 +266,7 @@ print_summary_box() {
     printf "${GREEN}║${NC} ${BLUE}%s${NC}%*s${GREEN}║${NC}\n" "$title" $((width - ${#title} - 1)) ""
     printf "${GREEN}╠%s╣${NC}\n" "$border"
     for line in "${lines[@]}"; do
-        printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
+    printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
     done
     printf "${GREEN}╚%s╝${NC}\n" "$border"
     echo
