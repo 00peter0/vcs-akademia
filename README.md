@@ -37,6 +37,7 @@ bash setup-keylogin.sh
 | 04 | Fail2ban — automatický ban brute-force útokov   | [04-fail2ban/](04-fail2ban/) | čoskoro |
 | 05 | Nginx + SSL — web server s HTTPS                | [05-nginx-ssl/](05-nginx-ssl/) | čoskoro |
 | 06 | Claude Code Agent — AI na VPS                   | [06-claude-code/](06-claude-code/) | čoskoro |
+| 07 | Tmux — session manager pre Claude Code          | [07-tmux/](07-tmux/) | čoskoro |
 
 ---
 
