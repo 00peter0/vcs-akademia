@@ -15,7 +15,7 @@
 # This script runs LOCALLY on your computer. It:
 #   1. Asks for VPS details and an optional project folder path.
 #   2. Installs Node.js LTS on the VPS (if missing or version < 18).
-#   3. Installs Claude Code CLI via npm (-g).
+#   3. Installs Claude Code CLI (native installer; falls back to npm -g).
 #   4. Optionally creates a project folder with a CLAUDE.md rules file.
 # =============================================================================
 
@@ -178,20 +178,46 @@ REMOTE_EOF
 }
 
 # -----------------------------------------------------------------------------
-# Build the remote script that installs Claude Code CLI via npm.
-# Outputs one of: CLAUDE_ALREADY_OK | CLAUDE_INSTALLED | CLAUDE_FAILED
+# Build the remote script that installs Claude Code CLI.
+# Tries the native installer first, falls back to npm.
+# Outputs one of:
+#   CLAUDE_ALREADY_OK <version>
+#   CLAUDE_INSTALLED_NATIVE <version>
+#   CLAUDE_INSTALLED_NPM <version>
+#   CLAUDE_FAILED <reason>
 # -----------------------------------------------------------------------------
 build_claude_install_script() {
     cat <<'REMOTE_EOF'
 set -e
+
+# Make sure freshly installed binaries (~/.local/bin) are on PATH for the check.
+export PATH="$HOME/.local/bin:$PATH"
 
 if command -v claude >/dev/null 2>&1; then
     echo "CLAUDE_ALREADY_OK $(claude --version 2>/dev/null || echo 'unknown')"
     exit 0
 fi
 
+if ! command -v curl >/dev/null 2>&1; then
+    echo "CLAUDE_FAILED curl_missing"
+    exit 1
+fi
+
+NATIVE_OK=0
+if curl -fsSL https://claude.ai/install.sh | sh >/dev/null 2>&1; then
+    export PATH="$HOME/.local/bin:$PATH"
+    if command -v claude >/dev/null 2>&1; then
+        NATIVE_OK=1
+    fi
+fi
+
+if [ "$NATIVE_OK" -eq 1 ]; then
+    echo "CLAUDE_INSTALLED_NATIVE $(claude --version 2>/dev/null || echo 'unknown')"
+    exit 0
+fi
+
 if ! command -v npm >/dev/null 2>&1; then
-    echo "CLAUDE_FAILED npm_missing"
+    echo "CLAUDE_FAILED npm_missing_after_native_failed"
     exit 1
 fi
 
@@ -205,7 +231,7 @@ if ! command -v claude >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "CLAUDE_INSTALLED $(claude --version 2>/dev/null || echo 'unknown')"
+echo "CLAUDE_INSTALLED_NPM $(claude --version 2>/dev/null || echo 'unknown')"
 REMOTE_EOF
 }
 
@@ -286,28 +312,31 @@ install_node_remote() {
 }
 
 # -----------------------------------------------------------------------------
-# Install Claude Code CLI on the VPS
+# Install Claude Code CLI on the VPS (native installer, npm fallback)
 # -----------------------------------------------------------------------------
 install_claude_remote() {
     local user="$1" host="$2" port="$3" sudo_prefix="$4"
 
-    print_info "Inštalujem Claude Code CLI cez npm..."
+    print_info "Inštalujem Claude Code CLI (natívny installer, fallback npm)..."
     local script output
     script="$(build_claude_install_script)"
 
     if ! output=$(run_remote "$user" "$host" "$port" "$sudo_prefix" "$script"); then
         printf "%s\n" "$output" >&2
-        print_error "Inštalácia Claude Code zlyhala (npm install -g @anthropic-ai/claude-code)."
+        print_error "Inštalácia Claude Code zlyhala."
     fi
 
     local last_line
     last_line=$(printf "%s" "$output" | tail -n1)
     case "$last_line" in
         CLAUDE_ALREADY_OK*)
-            print_success "Claude Code už nainštalovaný (verzia ${last_line#CLAUDE_ALREADY_OK })."
+            print_info "Claude Code už nainštalovaný (verzia ${last_line#CLAUDE_ALREADY_OK })."
             ;;
-        CLAUDE_INSTALLED*)
-            print_success "Claude Code ${last_line#CLAUDE_INSTALLED } nainštalovaný."
+        CLAUDE_INSTALLED_NATIVE*)
+            print_success "Claude Code ${last_line#CLAUDE_INSTALLED_NATIVE } nainštalovaný (natívny installer)."
+            ;;
+        CLAUDE_INSTALLED_NPM*)
+            print_success "Claude Code ${last_line#CLAUDE_INSTALLED_NPM } nainštalovaný (npm fallback)."
             ;;
         *)
             printf "%s\n" "$output" >&2
@@ -405,7 +434,7 @@ main() {
     cat <<EOF
 Tento skript nainštaluje Claude Code na tvoj VPS:
   1. Node.js LTS (cez NodeSource)
-  2. Claude Code CLI (npm install -g @anthropic-ai/claude-code)
+  2. Claude Code CLI (natívny installer; fallback na npm -g)
   3. Voliteľne projekt folder s CLAUDE.md
   4. Zobrazí inštrukcie na manuálne prihlásenie
 EOF
