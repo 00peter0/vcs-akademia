@@ -402,16 +402,16 @@ print_summary_box() {
 
     echo
     printf "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}\n"
-    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 07${NC}                              ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 07${NC}     ${GREEN}║${NC}\n"
     printf "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}\n"
-    printf "${GREEN}║${NC} ${GREEN}Tmux pripravený na VPS${NC}                                   ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Session:       %-42s${GREEN}║${NC}\n" "$session"
-    printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Pripojiť sa:                                             ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC}   %-54s${GREEN}║${NC}\n" "ssh -p ${port} ${user}@${host}"
-    printf "${GREEN}║${NC}   %-54s${GREEN}║${NC}\n" "tmux attach -t ${session}"
-    printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Odpojiť sa (session beží):  Ctrl+B  potom  D             ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} ${GREEN}Tmux pripravený na VPS${NC}         ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} Session:       %-42s                        ${GREEN}║${NC}\n" "$session"
+    printf "${GREEN}║${NC}                                             ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} Pripojiť sa:                                ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC}   %-54s                                     ${GREEN}║${NC}\n" "ssh -p ${port} ${user}@${host}"
+    printf "${GREEN}║${NC}   %-54s                                     ${GREEN}║${NC}\n" "tmux attach -t ${session}"
+    printf "${GREEN}║${NC}                                             ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} Odpojiť sa (session beží):  Ctrl+B  potom  D${GREEN}║${NC}\n"
     printf "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}\n"
     echo
 }
