@@ -6,7 +6,7 @@
 # GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
 #
 # Usage (Mac/Linux terminal or Windows Git Bash):
-#   curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/08-agent-setup/setup-agent.sh
+#   curl -O https://raw.githubusercontent.com/00peter0/vcs-akademia/main/08-agent-setup/setup-agent.sh
 #   bash setup-agent.sh
 #
 # Windows users: install Git Bash from https://gitforwindows.org
@@ -161,7 +161,7 @@ replace_in_file() {
 # Download one template file from GitHub.
 # Usage: fetch_template RELATIVE_PATH DEST_PATH
 # -----------------------------------------------------------------------------
-BASE_URL="https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/08-agent-setup/templates"
+BASE_URL="https://raw.githubusercontent.com/00peter0/vcs-akademia/main/08-agent-setup/templates"
 
 fetch_template() {
     local rel="$1" dest="$2"

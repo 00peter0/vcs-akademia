@@ -6,7 +6,7 @@
 # GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
 #
 # Usage (Mac/Linux terminal or Windows Git Bash):
-#   curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/NN-tema/<script-name>.sh
+#   curl -O https://raw.githubusercontent.com/00peter0/vcs-akademia/main/NN-tema/<script-name>.sh
 #   bash <script-name>.sh
 #
 # Windows users: install Git Bash from https://gitforwindows.org

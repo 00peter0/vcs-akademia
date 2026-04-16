@@ -6,7 +6,7 @@
 # GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
 #
 # Usage (Mac/Linux terminal or Windows Git Bash):
-#   curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/09-agent-skills/setup-skills.sh
+#   curl -O https://raw.githubusercontent.com/00peter0/vcs-akademia/main/09-agent-skills/setup-skills.sh
 #   bash setup-skills.sh
 #
 # Windows users: install Git Bash from https://gitforwindows.org
@@ -136,7 +136,7 @@ check_dependencies() {
 # Download one file from GitHub.
 # Usage: fetch_file URL DEST_PATH
 # -----------------------------------------------------------------------------
-BASE_URL="https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/09-agent-skills/templates"
+BASE_URL="https://raw.githubusercontent.com/00peter0/vcs-akademia/main/09-agent-skills/templates"
 
 fetch_file() {
     local url="$1" dest="$2"

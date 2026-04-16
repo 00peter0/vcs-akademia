@@ -6,7 +6,7 @@
 # GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
 #
 # Usage (Mac/Linux terminal or Windows Git Bash):
-#   curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/04-fail2ban/setup-fail2ban.sh
+#   curl -O https://raw.githubusercontent.com/00peter0/vcs-akademia/main/04-fail2ban/setup-fail2ban.sh
 #   bash setup-fail2ban.sh
 #
 # Windows users: install Git Bash from https://gitforwindows.org
