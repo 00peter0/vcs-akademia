@@ -8,44 +8,38 @@ Projekt je sprievodný materiál k YouTube kanálu **VCS Akadémia**, kde Peter 
 
 ## Ako používať
 
-Každý skript si vieš stiahnuť a spustiť jedným príkazom v termináli:
+Každý skript si stiahneš a spustíš dvomi príkazmi v termináli:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/01-ssh/setup-keylogin.sh | bash
-```
-
-Alebo si ho najprv stiahni a prečítaj:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/01-ssh/setup-keylogin.sh -o setup-keylogin.sh
-less setup-keylogin.sh
+curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/01-ssh/setup-keylogin.sh
 bash setup-keylogin.sh
 ```
 
+**Windows používatelia:** potrebujete [Git Bash](https://gitforwindows.org). Všetky skripty bežia v Git Bash rovnako ako v Mac/Linux termináli.
+
+**Mac/Linux:** funguje rovno v termináli, žiadna inštalácia nie je potrebná.
+
 ---
 
-## ⚠️ Varovanie
+## Varovanie
 
-**Nikdy nespúšťaj skript ktorý si neprečítal.** Platí to pre tieto skripty aj pre čokoľvek iné z internetu. Otvor si súbor v editore alebo cez `less`, pozri sa čo robí, a až potom ho spusti.
-
-Každý skript v tomto repe je verejný, otvorený a komentovaný — môžeš si overiť každý riadok.
+**Nikdy nespúšťaj skript ktorý si neprečítal.** Platí to pre tieto skripty aj pre čokoľvek iné z internetu. Každý skript v tomto repe je krátky, verejný a komentovaný — otvor si ho pred spustením v editore alebo cez `less` a pozri sa čo robí.
 
 ---
 
 ## Epizódy
 
-| # | Téma | Skript | Popis |
-|---|------|--------|-------|
-| 01 | SSH | [setup-keylogin.sh](01-ssh/setup-keylogin.sh) | Nastav prihlasovanie cez SSH kľúč a vypni heslo |
+| #  | Téma                                            | Skript     | Video   |
+|----|-------------------------------------------------|------------|---------|
+| 01 | SSH Key Login — prihlásenie bez hesla           | [01-ssh/](01-ssh/) | čoskoro |
 
 ---
 
 ## O projekte
 
-VCS Akadémia je vzdelávacia iniciatíva firmy [VirtuCyberSecurity](https://github.com/VirtuCyberSecurity). Cieľom je naučiť ľudí základy správy servera a praktické používanie AI nástrojov — bez akademickej vaty, bez zbytočnej teórie, len fungujúce riešenia.
+VCS Akadémia je vzdelávacia iniciatíva firmy [VirtuCyberSecurity](https://github.com/VirtuCyberSecurity). Cieľom je naučiť ľudí základy správy servera a praktické používanie AI nástrojov — bez akademickej vaty, len fungujúce riešenia.
 
 - **YouTube:** VCS Akadémia
 - **GitHub:** https://github.com/VirtuCyberSecurity/vcs-akademia
-- **Web:** https://virtucybersecurity.com
 
 Pull requesty a issues sú vítané.

@@ -2,110 +2,108 @@
 # =============================================================================
 # VCS Akadémia — Episode NN: <TITLE>
 # -----------------------------------------------------------------------------
-# YouTube:    VCS Akadémia
-# GitHub:     https://github.com/VirtuCyberSecurity/vcs-akademia
-# Source:     https://github.com/VirtuCyberSecurity/vcs-akademia/blob/main/NN-topic/<script-name>.sh
+# YouTube:    youtube.com/@VCSAkademia
+# GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
 #
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/NN-topic/<script-name>.sh | bash
-#
-# Or download first, read it, then run:
-#   curl -fsSL https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/NN-topic/<script-name>.sh -o <script-name>.sh
-#   less <script-name>.sh
+# Usage (Mac/Linux terminal or Windows Git Bash):
+#   curl -O https://raw.githubusercontent.com/VirtuCyberSecurity/vcs-akademia/main/NN-tema/<script-name>.sh
 #   bash <script-name>.sh
+#
+# Windows users: install Git Bash from https://gitforwindows.org
+# (ssh, ssh-keygen, ssh-copy-id and ~/.ssh all work the same as on Mac/Linux).
 # =============================================================================
 
 set -u
 set -o pipefail
 
 # -----------------------------------------------------------------------------
-# Colors
+# Colors (ANSI escape codes)
 # -----------------------------------------------------------------------------
-if [ -t 1 ] && command -v tput >/dev/null 2>&1 && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]; then
-    C_RESET="$(tput sgr0)"
-    C_RED="$(tput setaf 1)"
-    C_GREEN="$(tput setaf 2)"
-    C_YELLOW="$(tput setaf 3)"
-    C_BLUE="$(tput setaf 4)"
-    C_BOLD="$(tput bold)"
-else
-    C_RESET=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""; C_BOLD=""
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# -----------------------------------------------------------------------------
+# Output helpers (Slovak-facing prefixes)
+# -----------------------------------------------------------------------------
+print_info()    { printf "${BLUE}[INFO]${NC} %s\n" "$*"; }
+print_success() { printf "${GREEN}[OK]${NC} %s\n" "$*"; }
+print_warning() { printf "${YELLOW}[VAROVANIE]${NC} %s\n" "$*" >&2; }
+print_error()   { printf "${RED}[CHYBA]${NC} %s\n" "$*" >&2; exit 1; }
+
+# -----------------------------------------------------------------------------
+# OS detection: linux | mac | windows | unknown
+# -----------------------------------------------------------------------------
+OS="unknown"
+case "$(uname -s)" in
+    Linux*)               OS="linux" ;;
+    Darwin*)              OS="mac" ;;
+    MSYS*|MINGW*|CYGWIN*) OS="windows" ;;
+esac
+
+if [ "$OS" = "unknown" ]; then
+    print_error "Nepodporovaný operačný systém."
 fi
 
 # -----------------------------------------------------------------------------
-# Output helpers
-# -----------------------------------------------------------------------------
-print_info()    { printf "%s[INFO]%s %s\n"    "${C_BLUE}"   "${C_RESET}" "$*"; }
-print_success() { printf "%s[OK]%s %s\n"      "${C_GREEN}"  "${C_RESET}" "$*"; }
-print_warning() { printf "%s[WARN]%s %s\n"    "${C_YELLOW}" "${C_RESET}" "$*" >&2; }
-print_error()   { printf "%s[ERROR]%s %s\n"   "${C_RED}"    "${C_RESET}" "$*" >&2; }
-print_header()  { printf "\n%s== %s ==%s\n\n" "${C_BOLD}"   "$*" "${C_RESET}"; }
-
-# -----------------------------------------------------------------------------
-# Root check — exits if not running as root
-# -----------------------------------------------------------------------------
-check_root() {
-    if [ "$(id -u)" -ne 0 ]; then
-        print_error "This script must be run as root (try: sudo bash $0)"
-        exit 1
-    fi
-}
-
-# -----------------------------------------------------------------------------
-# Confirmation prompt — exits on anything other than y/Y
+# Confirmation prompt [y/N]
 # -----------------------------------------------------------------------------
 confirm() {
-    local prompt="${1:-Continue?}"
+    local prompt="${1:-Pokračovať?}"
     local reply
-    printf "%s%s [y/N]: %s" "${C_YELLOW}" "${prompt}" "${C_RESET}"
+    printf "${YELLOW}%s [y/N]:${NC} " "$prompt"
     read -r reply </dev/tty
-    case "${reply}" in
-        y|Y|yes|YES) return 0 ;;
-        *) print_info "Cancelled by user."; exit 0 ;;
+    case "$reply" in
+        y|Y|yes|YES|ano|ANO) return 0 ;;
+        *) printf "${BLUE}[INFO]${NC} Zrušené.\n"; exit 0 ;;
     esac
 }
 
 # -----------------------------------------------------------------------------
-# Detect operating system (linux | macos | unknown)
+# Platform-specific hooks — override in each episode as needed.
+# Common logic (ssh, ssh-keygen, read, curl) stays OUTSIDE these functions.
 # -----------------------------------------------------------------------------
-detect_os() {
-    case "$(uname -s)" in
-        Linux*)  echo "linux" ;;
-        Darwin*) echo "macos" ;;
-        *)       echo "unknown" ;;
+install_dependencies() {
+    case "$OS" in
+        linux)   : ;;  # e.g. apt install ...
+        mac)     : ;;  # e.g. brew install ...
+        windows) : ;;  # e.g. hint to install via Git Bash / winget
     esac
+}
+
+restart_service() {
+    case "$OS" in
+        linux)   : ;;  # systemctl restart <name>
+        mac)     : ;;  # launchctl kickstart -k system/<name>
+        windows) : ;;  # net stop <name> && net start <name>
+    esac
+}
+
+get_ssh_dir() {
+    # ~/.ssh works on linux, mac and Windows Git Bash.
+    echo "$HOME/.ssh"
 }
 
 # -----------------------------------------------------------------------------
 # MAIN
 # -----------------------------------------------------------------------------
 main() {
-    print_header "VCS Akadémia — Episode NN: <TITLE>"
-    print_info "Short description of what this script does."
+    printf "\n${BLUE}== VCS Akadémia — Epizóda NN: <TITLE> ==${NC}\n\n"
+    print_info "Stručný popis toho, čo skript urobí."
     echo
+
+    confirm "Chceš pokračovať?"
 
     # --- Script logic goes here ---
     # Example:
-    #   confirm "Proceed with installation?"
-    #   print_info "Doing the thing..."
-    #   if ! some_command; then
-    #       print_error "Something went wrong."
-    #       exit 1
-    #   fi
-    #   print_success "Done."
+    #   print_info "Robím prvú vec..."
+    #   some_command || print_error "Prvý krok zlyhal."
+    #   print_success "Prvý krok hotový."
 
-    print_header "Summary"
-    print_success "All steps completed successfully."
+    echo
+    print_success "Hotovo — všetky kroky prebehli úspešne."
 }
-
-# Trap to make sure we always print a clean failure message
-on_exit() {
-    local exit_code=$?
-    if [ "${exit_code}" -ne 0 ]; then
-        echo
-        print_error "Script ended with errors (exit code ${exit_code})."
-    fi
-}
-trap on_exit EXIT
 
 main "$@"
