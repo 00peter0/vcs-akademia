@@ -38,6 +38,7 @@ bash setup-keylogin.sh
 | 05 | Nginx + SSL — web server s HTTPS                | [05-nginx-ssl/](05-nginx-ssl/) | čoskoro |
 | 06 | Claude Code Agent — AI na VPS                   | [06-claude-code/](06-claude-code/) | čoskoro |
 | 07 | Tmux — session manager pre Claude Code          | [07-tmux/](07-tmux/) | čoskoro |
+| 08 | Agent Setup — CLAUDE.md, PROJECT.md, TASKS.md   | [08-agent-setup/](08-agent-setup/) | čoskoro |
 
 ---
 
