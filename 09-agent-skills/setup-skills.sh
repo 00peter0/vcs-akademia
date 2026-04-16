@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# VCS Akadémia — Episode 09: Agent Skills
+# VCS Akadémia — Episode 09: Agent Skills (cez SSH na VPS)
 # -----------------------------------------------------------------------------
 # YouTube:    youtube.com/@VCSAkademia
 # GitHub:     github.com/VirtuCyberSecurity/vcs-akademia
@@ -10,15 +10,12 @@
 #   bash setup-skills.sh
 #
 # Windows users: install Git Bash from https://gitforwindows.org
-# (curl works the same as on Mac/Linux).
+# (ssh works the same as on Mac/Linux).
 #
-# This script runs LOCALLY on your computer. It:
-#   1. Asks where your project is.
-#   2. Lets you pick which skills to install (docker / nginx / systemd / deploy / debug).
-#   3. Downloads SKILL.md template + chosen skills into .claude/skills/.
-#   4. Updates CLAUDE.md so the agent knows the skills exist.
-#
-# It does NOT connect to any VPS.
+# This script runs LOCALLY on your computer. It connects to your VPS via SSH
+# and installs Claude Code agent skills (docker / nginx / systemd / deploy /
+# debug) into .claude/skills/ directly on the VPS using curl on the VPS.
+# Nothing is downloaded to your local machine.
 # =============================================================================
 
 set -u
@@ -56,7 +53,7 @@ if [ "$OS" = "unknown" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Confirmation prompt [y/N] — exits on No
+# Prompts
 # -----------------------------------------------------------------------------
 confirm() {
     local prompt="${1:-Pokračovať?}"
@@ -69,9 +66,6 @@ confirm() {
     esac
 }
 
-# -----------------------------------------------------------------------------
-# Yes/No prompt — returns 0 for yes, 1 for no (no exit)
-# -----------------------------------------------------------------------------
 ask_yn() {
     local prompt="${1:-Pokračovať?}"
     local default="${2:-n}"
@@ -91,9 +85,6 @@ ask_yn() {
     esac
 }
 
-# -----------------------------------------------------------------------------
-# Ask for user input with optional default
-# -----------------------------------------------------------------------------
 ask() {
     local prompt="$1"
     local default="${2:-}"
@@ -111,128 +102,247 @@ ask() {
     fi
 }
 
+# Reject inputs that would break shell escaping. Whitelisted chars only.
+validate_input() {
+    local label="$1" value="$2"
+    case "$value" in
+        *\"*|*\'*|*\$*|*\`*|*\\*|*\|*)
+            print_error "$label obsahuje nepovolený znak (\" ' \\ \$ \` |). Použi jednoduchý text."
+            ;;
+    esac
+    case "$value" in
+        *$'\n'*|*$'\r'*) print_error "$label nesmie obsahovať nový riadok." ;;
+    esac
+}
+
 # -----------------------------------------------------------------------------
-# Check that required local tools exist
+# Local dependencies — only ssh and curl are needed locally.
 # -----------------------------------------------------------------------------
-check_dependencies() {
+check_local_dependencies() {
     local missing=""
-    for tool in curl mkdir; do
+    for tool in ssh curl; do
         if ! command -v "$tool" >/dev/null 2>&1; then
             missing="${missing} ${tool}"
         fi
     done
     if [ -n "$missing" ]; then
-        print_warning "Chýbajúce nástroje:${missing}"
+        print_warning "Lokálne chýbajú nástroje:${missing}"
         case "$OS" in
             windows) print_info "Na Windows potrebuješ Git Bash: https://gitforwindows.org" ;;
-            mac)     print_info "Na Mac by mali byť štandardne dostupné (xcode-select --install)." ;;
-            linux)   print_info "Na Debian/Ubuntu: sudo apt install curl" ;;
+            mac)     print_info "Na Mac sú štandardne dostupné (xcode-select --install)." ;;
+            linux)   print_info "Na Debian/Ubuntu: sudo apt install openssh-client curl" ;;
         esac
         print_error "Doinštaluj chýbajúce nástroje a spusti skript znova."
     fi
 }
 
 # -----------------------------------------------------------------------------
-# Download one file from GitHub.
-# Usage: fetch_file URL DEST_PATH
+# SSH wrapper — uses ControlMaster so we open ONE connection and reuse it
+# for every check / mkdir / curl call. Avoids re-prompting for password.
 # -----------------------------------------------------------------------------
-BASE_URL="https://raw.githubusercontent.com/00peter0/vcs-akademia/main/09-agent-skills/templates"
+SSH_CTRL=""
+SSH_TARGET=""
+SSH_PORT_OPT=""
 
-fetch_file() {
-    local url="$1" dest="$2"
-    local http_code
-    http_code=$(curl -sS -w '%{http_code}' -o "$dest" "$url" 2>/dev/null) || {
-        print_error "Stiahnutie zlyhalo: ${url} (curl chyba)"
-    }
-    if [ "$http_code" != "200" ]; then
-        rm -f "$dest"
-        print_error "Stiahnutie zlyhalo: ${url} (HTTP ${http_code})"
+ssh_setup() {
+    SSH_CTRL="${TMPDIR:-/tmp}/vcs-skills-ssh-$$"
+    SSH_TARGET="${VPS_USER}@${VPS_IP}"
+    SSH_PORT_OPT="-p ${VPS_PORT}"
+    trap 'ssh -O exit -o ControlPath="$SSH_CTRL" "$SSH_TARGET" >/dev/null 2>&1 || true; rm -f "$SSH_CTRL"' EXIT
+}
+
+ssh_run() {
+    # shellcheck disable=SC2086
+    ssh $SSH_PORT_OPT \
+        -o ControlMaster=auto \
+        -o ControlPath="$SSH_CTRL" \
+        -o ControlPersist=300 \
+        -o StrictHostKeyChecking=accept-new \
+        "$SSH_TARGET" "$@"
+}
+
+ssh_test_connection() {
+    print_info "Testujem SSH spojenie na ${SSH_TARGET} (port ${VPS_PORT})..."
+    if ! ssh_run "echo __vcs_ok__" | grep -q '^__vcs_ok__$'; then
+        print_error "Pripojenie na VPS zlyhalo. Skontroluj IP, port, používateľa a SSH kľúč."
     fi
-    if [ ! -s "$dest" ]; then
-        print_error "Stiahnutý súbor je prázdny: ${url}"
+    print_success "SSH spojenie funguje."
+}
+
+# -----------------------------------------------------------------------------
+# Remote helpers — every command runs on the VPS through ssh_run.
+# -----------------------------------------------------------------------------
+remote_home() {
+    local home
+    home=$(ssh_run 'printf %s "$HOME"') || print_error "Nepodarilo sa zistiť HOME na VPS."
+    if [ -z "$home" ]; then
+        print_error "VPS vrátil prázdny HOME."
+    fi
+    printf '%s' "$home"
+}
+
+remote_dir_exists() {
+    local path="$1" out
+    out=$(ssh_run "[ -d '$path' ] && echo exists || echo notfound") \
+        || print_error "Kontrola adresára '$path' na VPS zlyhala."
+    [ "$out" = "exists" ]
+}
+
+remote_file_exists() {
+    local path="$1" out
+    out=$(ssh_run "[ -f '$path' ] && echo exists || echo notfound") \
+        || print_error "Kontrola súboru '$path' na VPS zlyhala."
+    [ "$out" = "exists" ]
+}
+
+remote_mkdir() {
+    local path="$1"
+    ssh_run "mkdir -p '$path'" || print_error "Vytvorenie adresára '$path' na VPS zlyhalo."
+}
+
+# Download a single file via curl ON THE VPS. Aborts on HTTP error or empty body.
+remote_curl() {
+    local url="$1" dest="$2"
+    if ! ssh_run "curl -fsSL '$url' -o '$dest'"; then
+        print_error "Sťahovanie zlyhalo na VPS: $url"
+    fi
+    if ! ssh_run "[ -s '$dest' ]"; then
+        print_error "Stiahnutý súbor je prázdny: $dest"
     fi
 }
 
 # -----------------------------------------------------------------------------
-# Available skills (label : key)
-# -----------------------------------------------------------------------------
-ALL_SKILLS="docker nginx systemd deploy debug"
-
-# -----------------------------------------------------------------------------
-# Final summary box
+# Final summary box (dynamic width — same style as 01-ssh / 08-agent-setup).
 # -----------------------------------------------------------------------------
 print_summary_box() {
-    local installed="$1" path="$2"
-    echo
-    printf "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}\n"
-    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 09${NC}                              ${GREEN}║${NC}\n"
-    printf "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}\n"
-    printf "${GREEN}║${NC} ${GREEN}Skills nainštalované${NC}                                     ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Umiestnenie: %-44s${GREEN}║${NC}\n" ".claude/skills/"
-    printf "${GREEN}║${NC} Projekt:     %-44s${GREEN}║${NC}\n" "$path"
-    printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Nainštalované skills:                                    ${GREEN}║${NC}\n"
+    local installed="$1"
+    local title="VCS Akadémia — Epizóda 09"
+
+    local lines=(
+        "Skills nainštalované na VPS"
+        "Projekt: ${PROJECT_PATH}"
+        "Server:  ${VPS_USER}@${VPS_IP}:${VPS_PORT}"
+        ""
+        "Nainštalované skills:"
+    )
+    local s
     for s in $installed; do
-        printf "${GREEN}║${NC}   - %-54s${GREEN}║${NC}\n" "$s"
+        lines+=("  ✓ $s")
     done
-    printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Šablóna pre nový skill:                                  ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC}   .claude/skills/SKILL-TEMPLATE.md                       ${GREEN}║${NC}\n"
-    printf "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}\n"
+    lines+=("")
+    lines+=("Šablóna pre nový skill:")
+    lines+=("  .claude/skills/SKILL-TEMPLATE.md")
+
+    local max=${#title} line
+    for line in "${lines[@]}"; do
+        [ ${#line} -gt $max ] && max=${#line}
+    done
+    local width=$((max + 4))
+    local border
+    border=$(printf '═%.0s' $(seq 1 $width))
+
+    echo
+    printf "${GREEN}╔%s╗${NC}\n" "$border"
+    printf "${GREEN}║${NC} ${BLUE}%s${NC}%*s${GREEN}║${NC}\n" "$title" $((width - ${#title} - 1)) ""
+    printf "${GREEN}╠%s╣${NC}\n" "$border"
+    for line in "${lines[@]}"; do
+        printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
+    done
+    printf "${GREEN}╚%s╝${NC}\n" "$border"
     echo
 }
+
+# -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+BASE_URL="https://raw.githubusercontent.com/00peter0/vcs-akademia/main/09-agent-skills/templates"
+ALL_SKILLS="docker nginx systemd deploy debug"
 
 # -----------------------------------------------------------------------------
 # MAIN
 # -----------------------------------------------------------------------------
 main() {
-    printf "\n${BLUE}== VCS Akadémia — Epizóda 09: Agent Skills ==${NC}\n\n"
+    printf "\n${BLUE}== VCS Akadémia — Epizóda 09: Agent Skills na VPS ==${NC}\n\n"
 
     cat <<EOF
-Tento skript pridá Claude Code agentovi "skills" — návody pre konkrétne nástroje
-a workflowy. Bez nich agent vymýšľa, so skillom vie presne čo robiť.
+Tento skript beží lokálne. Pripojí sa cez SSH na tvoj VPS a tam:
+  1. Overí že projekt existuje (CLAUDE.md).
+  2. Stiahne SKILL-TEMPLATE.md + vybrané skills do .claude/skills/ na VPS.
+  3. Aktualizuje CLAUDE.md na VPS — pridá sekciu '## Skills'.
 
-  1. Opýta sa kde je tvoj projekt.
-  2. Necháš si vybrať ktoré skills chceš nainštalovať.
-  3. Stiahne SKILL.md šablónu + vybrané skills do .claude/skills/.
-  4. Aktualizuje CLAUDE.md aby agent o skills vedel.
+Lokálne sa nič nesťahuje.
 EOF
     echo
     confirm "Chceš pokračovať?"
 
-    printf "\n${BLUE}-- Kontrola závislostí --${NC}\n"
-    check_dependencies
-    print_success "Všetky potrebné nástroje sú dostupné."
+    printf "\n${BLUE}-- Kontrola lokálnych závislostí --${NC}\n"
+    check_local_dependencies
+    print_success "ssh a curl sú dostupné lokálne."
 
     # -------------------------------------------------------------------------
-    # Project path
+    # VPS inputs
     # -------------------------------------------------------------------------
-    printf "\n${BLUE}-- Projekt --${NC}\n"
+    printf "\n${BLUE}-- Údaje o VPS --${NC}\n"
+    VPS_IP="$(ask "IP adresa VPS" "")"
+    if [ -z "$VPS_IP" ]; then
+        print_error "IP adresa nesmie byť prázdna."
+    fi
+    validate_input "IP adresa" "$VPS_IP"
 
-    local project_path
-    project_path="$(ask "Cesta k projektu" "./")"
-    if [ -z "$project_path" ]; then
+    VPS_PORT="$(ask "SSH port" "22")"
+    case "$VPS_PORT" in
+        ''|*[!0-9]*) print_error "Port musí byť číslo." ;;
+    esac
+    if [ "$VPS_PORT" -lt 1 ] || [ "$VPS_PORT" -gt 65535 ]; then
+        print_error "Port musí byť v rozsahu 1–65535."
+    fi
+
+    VPS_USER="$(ask "Username na VPS" "root")"
+    if [ -z "$VPS_USER" ]; then
+        print_error "Username nesmie byť prázdny."
+    fi
+    validate_input "Username" "$VPS_USER"
+
+    printf "\n${BLUE}-- Údaje o projekte --${NC}\n"
+    PROJECT_PATH="$(ask "Cesta k projektu na VPS" "~/projects")"
+    if [ -z "$PROJECT_PATH" ]; then
         print_error "Cesta nesmie byť prázdna."
     fi
+    validate_input "Cesta k projektu" "$PROJECT_PATH"
 
-    # Expand leading ~ to $HOME
-    case "$project_path" in
-        "~")   project_path="$HOME" ;;
-        "~/"*) project_path="$HOME/${project_path#~/}" ;;
+    # -------------------------------------------------------------------------
+    # SSH connection
+    # -------------------------------------------------------------------------
+    printf "\n${BLUE}-- Pripojenie na VPS --${NC}\n"
+    ssh_setup
+    ssh_test_connection
+
+    # Expand ~ on the remote side
+    local rhome
+    rhome=$(remote_home)
+    case "$PROJECT_PATH" in
+        "~")   PROJECT_PATH="$rhome" ;;
+        "~/"*) PROJECT_PATH="${rhome}/${PROJECT_PATH#\~/}" ;;
     esac
 
-    if [ ! -d "$project_path" ]; then
-        print_error "Adresár '$project_path' neexistuje."
+    # -------------------------------------------------------------------------
+    # Verify project on VPS
+    # -------------------------------------------------------------------------
+    printf "\n${BLUE}-- Overujem projekt na VPS --${NC}\n"
+    if ! remote_dir_exists "$PROJECT_PATH"; then
+        print_warning "Adresár '$PROJECT_PATH' na VPS neexistuje."
+        if ! ask_yn "Vytvoriť ho a pokračovať aj tak?" "n"; then
+            print_info "Zrušené."
+            exit 0
+        fi
+        remote_mkdir "$PROJECT_PATH"
+        print_success "Adresár vytvorený."
     fi
 
-    # Normalize to absolute path (best-effort)
-    local abs
-    abs=$(cd "$project_path" 2>/dev/null && pwd) || abs="$project_path"
-    project_path="$abs"
-
-    # CLAUDE.md check (warning only)
-    if [ ! -f "$project_path/CLAUDE.md" ]; then
-        print_warning "Toto nevyzerá ako agent projekt (chýba CLAUDE.md). Odporúčame epizódu 08."
+    if remote_file_exists "$PROJECT_PATH/CLAUDE.md"; then
+        print_success "CLAUDE.md nájdený na VPS."
+    else
+        print_warning "CLAUDE.md nenájdený v '$PROJECT_PATH' — odporúčame najprv epizódu 08."
         if ! ask_yn "Pokračovať aj tak?" "n"; then
             print_info "Zrušené."
             exit 0
@@ -259,8 +369,8 @@ EOF
         print_error "Nevybral si žiadne skills."
     fi
 
-    # Resolve choice -> skill list
     local selected=""
+    local n
     for n in $skill_choice; do
         case "$n" in
             1) selected="${selected} docker"  ;;
@@ -274,14 +384,14 @@ EOF
     done
 
     # Deduplicate (preserve order)
-    local dedup=""
+    local dedup="" s
     for s in $selected; do
         case " $dedup " in
             *" $s "*) : ;;
             *) dedup="${dedup} $s" ;;
         esac
     done
-    selected="$(echo $dedup)"  # trim
+    selected="$(echo $dedup)"
 
     if [ -z "$selected" ]; then
         print_error "Žiadny platný skill nebol vybraný."
@@ -289,57 +399,65 @@ EOF
 
     echo
     printf "${BLUE}-- Zhrnutie --${NC}\n"
-    print_info "Projekt:  ${project_path}"
-    print_info "Skills:   ${selected}"
+    print_info "VPS:     ${VPS_USER}@${VPS_IP}:${VPS_PORT}"
+    print_info "Projekt: ${PROJECT_PATH}"
+    print_info "Skills:  ${selected}"
     echo
     confirm "Pokračovať?"
 
     # -------------------------------------------------------------------------
-    # Create directory structure
+    # Create skills directory on VPS
     # -------------------------------------------------------------------------
-    local skills_dir="$project_path/.claude/skills"
-    mkdir -p "$skills_dir" || print_error "Vytvorenie $skills_dir zlyhalo."
+    printf "\n${BLUE}-- Pripravujem adresár na VPS --${NC}\n"
+    local skills_dir="$PROJECT_PATH/.claude/skills"
+    remote_mkdir "$skills_dir"
     print_success "Adresár pripravený: ${skills_dir}"
 
     # -------------------------------------------------------------------------
-    # Download SKILL.md template
+    # Download SKILL.md template onto VPS
     # -------------------------------------------------------------------------
     printf "\n${BLUE}-- Sťahujem šablónu pre nový skill --${NC}\n"
     local template_dest="$skills_dir/SKILL-TEMPLATE.md"
-    if [ -e "$template_dest" ]; then
+    if remote_file_exists "$template_dest"; then
         print_warning "SKILL-TEMPLATE.md už existuje — preskakujem."
     else
-        fetch_file "$BASE_URL/SKILL.md" "$template_dest"
-        print_success "Šablóna pre nový skill: .claude/skills/SKILL-TEMPLATE.md"
+        remote_curl "$BASE_URL/SKILL.md" "$template_dest"
+        print_success "Šablóna: .claude/skills/SKILL-TEMPLATE.md"
     fi
 
     # -------------------------------------------------------------------------
-    # Download chosen skills
+    # Download chosen skills onto VPS
     # -------------------------------------------------------------------------
-    printf "\n${BLUE}-- Sťahujem vybrané skills --${NC}\n"
+    printf "\n${BLUE}-- Sťahujem vybrané skills na VPS --${NC}\n"
     local installed=""
     for s in $selected; do
         local skill_dir="$skills_dir/$s"
         local skill_file="$skill_dir/SKILL.md"
-        mkdir -p "$skill_dir" || print_error "Vytvorenie $skill_dir zlyhalo."
-        if [ -e "$skill_file" ]; then
-            print_warning ".claude/skills/$s/SKILL.md už existuje — preskakujem."
+        if remote_file_exists "$skill_file"; then
+            print_warning "$s už existuje — preskakujem."
         else
-            fetch_file "$BASE_URL/skills/$s/SKILL.md" "$skill_file"
-            print_success "Skill nainštalovaný: .claude/skills/$s/SKILL.md"
+            remote_mkdir "$skill_dir"
+            remote_curl "$BASE_URL/skills/$s/SKILL.md" "$skill_file"
+            print_success "Skill nainštalovaný: $s"
         fi
         installed="${installed} $s"
     done
-    installed="$(echo $installed)"  # trim
+    installed="$(echo $installed)"
 
     # -------------------------------------------------------------------------
-    # Update CLAUDE.md
+    # Update CLAUDE.md on VPS
     # -------------------------------------------------------------------------
-    printf "\n${BLUE}-- Aktualizujem CLAUDE.md --${NC}\n"
-    local claude_md="$project_path/CLAUDE.md"
-    if [ -f "$claude_md" ]; then
-        if grep -q "^## Skills" "$claude_md" 2>/dev/null; then
-            print_warning "CLAUDE.md už obsahuje sekciu '## Skills' — neprepisujem."
+    printf "\n${BLUE}-- Aktualizujem CLAUDE.md na VPS --${NC}\n"
+    local claude_md="$PROJECT_PATH/CLAUDE.md"
+    if ! remote_file_exists "$claude_md"; then
+        print_warning "CLAUDE.md nenájdený — preskakujem aktualizáciu."
+        print_info "Pridaj do CLAUDE.md ručne sekciu '## Skills' so zoznamom súborov."
+    else
+        local has_section
+        has_section=$(ssh_run "grep -q '^## Skills' '$claude_md' && echo exists || echo missing") \
+            || print_error "Kontrola CLAUDE.md zlyhala."
+        if [ "$has_section" = "exists" ]; then
+            print_info "Sekcia '## Skills' už existuje v CLAUDE.md."
         else
             {
                 printf '\n## Skills\n'
@@ -347,23 +465,21 @@ EOF
                 for s in $installed; do
                     printf -- '- %s: .claude/skills/%s/SKILL.md\n' "$s" "$s"
                 done
-            } >> "$claude_md" || print_error "Zápis do CLAUDE.md zlyhal."
-            print_success "CLAUDE.md aktualizovaný — agent bude skills používať automaticky."
+            } | ssh_run "cat >> '$claude_md'" \
+                || print_error "Zápis do CLAUDE.md na VPS zlyhal."
+            print_success "CLAUDE.md aktualizovaný — sekcia '## Skills' pridaná."
         fi
-    else
-        print_warning "CLAUDE.md nenájdený — preskakujem aktualizáciu."
-        print_info "Pridaj do CLAUDE.md ručne sekciu '## Skills' so zoznamom súborov."
     fi
 
     # -------------------------------------------------------------------------
     # Final summary
     # -------------------------------------------------------------------------
-    print_summary_box "$installed" "$project_path"
+    print_summary_box "$installed"
 
     print_info "Ďalší krok:"
-    print_info "  1. Otvor .claude/skills/SKILL-TEMPLATE.md a pozri si štruktúru."
-    print_info "  2. Pre vlastný skill skopíruj šablónu: cp .claude/skills/SKILL-TEMPLATE.md .claude/skills/MOJ-SKILL/SKILL.md"
-    print_info "  3. Pridaj nový skill aj do CLAUDE.md sekcie '## Skills'."
+    print_info "  1. Prihlás sa na VPS: ssh ${VPS_USER}@${VPS_IP}"
+    print_info "  2. cd ${PROJECT_PATH} && claude"
+    print_info "  3. Pre vlastný skill skopíruj šablónu SKILL-TEMPLATE.md do .claude/skills/MOJ-SKILL/SKILL.md"
 }
 
 main "$@"
