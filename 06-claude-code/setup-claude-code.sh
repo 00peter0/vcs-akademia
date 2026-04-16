@@ -17,8 +17,6 @@
 #   2. Installs Node.js LTS on the VPS (if missing or version < 18).
 #   3. Installs Claude Code CLI via npm (-g).
 #   4. Optionally creates a project folder with a CLAUDE.md rules file.
-#   5. Opens an interactive SSH session for "claude auth login".
-#   6. Verifies the installation.
 # =============================================================================
 
 set -u
@@ -352,24 +350,51 @@ create_project_remote() {
 }
 
 # -----------------------------------------------------------------------------
-# Final summary box
+# Final summary box (dynamic width)
 # -----------------------------------------------------------------------------
 print_summary_box() {
-    local user="$1" host="$2" port="$3" version="$4" project_path="$5"
+    local user="$1" host="$2" port="$3" project_path="$4"
+
+    local version
+    version=$(ssh -o BatchMode=yes \
+                  -o StrictHostKeyChecking=accept-new \
+                  -o ConnectTimeout=10 \
+                  -p "$port" "${user}@${host}" \
+                  'claude --version 2>/dev/null || echo "nainštalovaný"' 2>/dev/null)
+    [ -z "$version" ] && version="nainštalovaný"
+
+    local title="VCS Akadémia — Epizóda 06"
+    local lines=(
+        "Claude Code ${version}"
+    )
+    if [ -n "$project_path" ]; then
+        lines+=("Projekt: ${project_path}")
+    fi
+    lines+=(
+        ""
+        "Posledný krok — prihlásenie:"
+        "1. ssh -p ${port} ${user}@${host}"
+        "2. claude auth login"
+        "3. Otvor link v prehliadači na svojom počítači"
+        "4. Skopíruj kód späť do terminálu na VPS"
+    )
+
+    local max=${#title} line
+    for line in "${lines[@]}"; do
+        [ ${#line} -gt $max ] && max=${#line}
+    done
+    local width=$((max + 4))
+    local border
+    border=$(printf '═%.0s' $(seq 1 $width))
 
     echo
-    printf "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}\n"
-    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 06${NC}                              ${GREEN}║${NC}\n"
-    printf "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}\n"
-    printf "${GREEN}║${NC} ${GREEN}Claude Code nainštalovaný${NC}                                ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Verzia:        %-42s${GREEN}║${NC}\n" "${version:-neznáma}"
-    printf "${GREEN}║${NC} Spustiť:       %-42s${GREEN}║${NC}\n" "ssh -p ${port} ${user}@${host}"
-    printf "${GREEN}║${NC}                potom: claude                             ${GREEN}║${NC}\n"
-    if [ -n "$project_path" ]; then
-        printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-        printf "${GREEN}║${NC} Projekt:       %-42s${GREEN}║${NC}\n" "$project_path"
-    fi
-    printf "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}\n"
+    printf "${GREEN}╔%s╗${NC}\n" "$border"
+    printf "${GREEN}║${NC} ${BLUE}%s${NC}%*s${GREEN}║${NC}\n" "$title" $((width - ${#title} - 1)) ""
+    printf "${GREEN}╠%s╣${NC}\n" "$border"
+    for line in "${lines[@]}"; do
+        printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
+    done
+    printf "${GREEN}╚%s╝${NC}\n" "$border"
     echo
 }
 
@@ -384,7 +409,7 @@ Tento skript nainštaluje Claude Code na tvoj VPS:
   1. Node.js LTS (cez NodeSource)
   2. Claude Code CLI (npm install -g @anthropic-ai/claude-code)
   3. Voliteľne projekt folder s CLAUDE.md
-  4. Spustí prihlásenie — vyber subscription (Claude.ai Max) alebo API key
+  4. Zobrazí inštrukcie na manuálne prihlásenie
 EOF
     echo
 
@@ -440,50 +465,31 @@ EOF
     echo
     confirm "Pokračovať?"
 
-    printf "\n${BLUE}-- Krok 1/5 — Node.js LTS --${NC}\n"
+    printf "\n${BLUE}-- Krok 1/3 — Node.js LTS --${NC}\n"
     install_node_remote "$vps_user" "$vps_host" "$vps_port" "$sudo_prefix"
 
-    printf "\n${BLUE}-- Krok 2/5 — Claude Code CLI --${NC}\n"
+    printf "\n${BLUE}-- Krok 2/3 — Claude Code CLI --${NC}\n"
     install_claude_remote "$vps_user" "$vps_host" "$vps_port" "$sudo_prefix"
 
     if [ "$create_project" = "y" ]; then
-        printf "\n${BLUE}-- Krok 3/5 — Projekt folder --${NC}\n"
+        printf "\n${BLUE}-- Krok 3/3 — Projekt folder --${NC}\n"
         create_project_remote "$vps_user" "$vps_host" "$vps_port" "$project_path" || true
     else
-        printf "\n${BLUE}-- Krok 3/5 — Projekt folder (preskočené) --${NC}\n"
+        printf "\n${BLUE}-- Krok 3/3 — Projekt folder (preskočené) --${NC}\n"
         print_info "Projekt folder nebol vytvorený — preskakujem."
     fi
 
-    printf "\n${BLUE}-- Krok 4/5 — Prihlásenie --${NC}\n"
-    print_info "Spúšťam interaktívnu SSH session — v termináli napíš: claude auth login"
-    print_info "Po prihlásení napíš: exit"
-    print_info "---"
-    ssh -t -p "$vps_port" \
-        -o StrictHostKeyChecking=accept-new \
-        "${vps_user}@${vps_host}" || true
-
-    printf "\n${BLUE}-- Krok 5/5 — Overenie --${NC}\n"
-    local version=""
-    if version=$(ssh -o BatchMode=yes -p "$vps_port" \
-                     -o StrictHostKeyChecking=accept-new \
-                     -o ConnectTimeout=15 \
-                     "${vps_user}@${vps_host}" "claude --version" 2>&1); then
-        version=$(printf "%s" "$version" | tail -n1)
-        print_success "Claude Code je pripravený (verzia: $version)."
+    echo
+    if [ "$create_project" = "y" ]; then
+        print_success "Claude Code nainštalovaný a projekt folder pripravený."
     else
-        version=""
-        print_warning "Skontroluj prihlásenie: ssh -p ${vps_port} ${vps_user}@${vps_host} potom: claude auth status"
+        print_success "Claude Code nainštalovaný."
     fi
+    echo
 
-    print_summary_box "$vps_user" "$vps_host" "$vps_port" "$version" \
+    print_summary_box "$vps_user" "$vps_host" "$vps_port" \
                       "$([ "$create_project" = "y" ] && echo "$project_path" || echo "")"
 
-    print_info "Ďalšie kroky:"
-    print_info "  ssh -p ${vps_port} ${vps_user}@${vps_host}"
-    print_info "  claude              # spustí Claude Code"
-    print_info "  claude auth status  # overí prihlásenie"
-    print_info "  claude auth logout  # odhlási sa"
-    echo
     print_info "Ak chceš nechať agenta bežať aj po zatvorení SSH — pozri epizódu 07 (tmux)."
 }
 
