@@ -39,6 +39,7 @@ bash setup-keylogin.sh
 | 06 | Claude Code Agent — AI na VPS                   | [06-claude-code/](06-claude-code/) | čoskoro |
 | 07 | Tmux — session manager pre Claude Code          | [07-tmux/](07-tmux/) | čoskoro |
 | 08 | Agent Setup — CLAUDE.md, PROJECT.md, TASKS.md   | [08-agent-setup/](08-agent-setup/) | čoskoro |
+| 09 | Agent Skills — návody pre agenta                | [09-agent-skills/](09-agent-skills/) | čoskoro |
 
 ---
 
