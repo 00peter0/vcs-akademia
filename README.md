@@ -43,3 +43,4 @@ VCS Akadémia je vzdelávacia iniciatíva firmy [VirtuCyberSecurity](https://git
 - **GitHub:** https://github.com/VirtuCyberSecurity/vcs-akademia
 
 Pull requesty a issues sú vítané.
+# vcs-akademia
