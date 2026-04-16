@@ -33,6 +33,7 @@ bash setup-keylogin.sh
 |----|-------------------------------------------------|------------|---------|
 | 01 | SSH Key Login — prihlásenie bez hesla           | [01-ssh/](01-ssh/) | čoskoro |
 | 02 | Sudo User + Zakáž Root Login                    | [02-sudo-user/](02-sudo-user/) | čoskoro |
+| 03 | UFW Firewall                                    | [03-firewall/](03-firewall/) | čoskoro |
 
 ---
 
