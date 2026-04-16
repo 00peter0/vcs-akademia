@@ -245,14 +245,30 @@ test_key_login() {
 # -----------------------------------------------------------------------------
 print_summary_box() {
     local user="$1" host="$2" port="$3" key_path="$4"
+
+    local title="VCS Akadémia — Epizóda 01"
+    local lines=(
+        "Hotovo!"
+        "Prihlásenie: ssh -p ${port} ${user}@${host}"
+        "Key: ${key_path}"
+    )
+
+    local max=${#title} line
+    for line in "${lines[@]}"; do
+        [ ${#line} -gt $max ] && max=${#line}
+    done
+    local width=$((max + 4))
+    local border
+    border=$(printf '═%.0s' $(seq 1 $width))
+
     echo
-    printf "${GREEN}╔════════════════════════════════════════════════╗${NC}\n"
-    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 01${NC}                    ${GREEN}║${NC}\n"
-    printf "${GREEN}╠════════════════════════════════════════════════╣${NC}\n"
-    printf "${GREEN}║${NC} ${GREEN}Hotovo!${NC}                                        ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Prihlásenie: ssh -p %-5s %s@%s\n" "$port" "$user" "$host"
-    printf "${GREEN}║${NC} Key: %s\n" "$key_path"
-    printf "${GREEN}╚════════════════════════════════════════════════╝${NC}\n"
+    printf "${GREEN}╔%s╗${NC}\n" "$border"
+    printf "${GREEN}║${NC} ${BLUE}%s${NC}%*s${GREEN}║${NC}\n" "$title" $((width - ${#title} - 1)) ""
+    printf "${GREEN}╠%s╣${NC}\n" "$border"
+    for line in "${lines[@]}"; do
+        printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
+    done
+    printf "${GREEN}╚%s╝${NC}\n" "$border"
     echo
 }
 
