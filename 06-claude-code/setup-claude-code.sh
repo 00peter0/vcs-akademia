@@ -352,25 +352,6 @@ create_project_remote() {
 }
 
 # -----------------------------------------------------------------------------
-# Verify Claude Code is callable on the VPS (claude --version)
-# -----------------------------------------------------------------------------
-verify_claude_remote() {
-    local user="$1" host="$2" port="$3"
-    local version
-    if ! version=$(ssh -p "$port" \
-                       -o StrictHostKeyChecking=accept-new \
-                       -o ConnectTimeout=15 \
-                       "${user}@${host}" "claude --version" 2>&1); then
-        printf "%s\n" "$version" >&2
-        print_warning "Overiť stav: ssh ${user}@${host} potom: claude auth status"
-        return 1
-    fi
-    print_success "Claude Code je pripravený (verzia: $version)."
-    echo "$version"
-    return 0
-}
-
-# -----------------------------------------------------------------------------
 # Final summary box
 # -----------------------------------------------------------------------------
 print_summary_box() {
@@ -474,28 +455,25 @@ EOF
     fi
 
     printf "\n${BLUE}-- Krok 4/5 — Prihlásenie --${NC}\n"
-    print_info "Spúšťam prihlásenie — vyber si subscription (Claude.ai Max) alebo API key..."
-    print_info "Po prihlásení zatvor session s Ctrl+D."
-    echo
-    if ! ssh -t -p "$vps_port" \
-            -o StrictHostKeyChecking=accept-new \
-            "${vps_user}@${vps_host}" "claude auth login"; then
-        echo
-        print_warning "Prihlásenie prerušené alebo zlyhalo."
-        print_warning "Prihlásiť sa môžeš manuálne:"
-        print_warning "  ssh -p ${vps_port} ${vps_user}@${vps_host}"
-        print_warning "  claude auth login"
-    fi
+    print_info "Spúšťam interaktívnu SSH session — v termináli napíš: claude auth login"
+    print_info "Po prihlásení napíš: exit"
+    print_info "---"
+    ssh -t -p "$vps_port" \
+        -o StrictHostKeyChecking=accept-new \
+        "${vps_user}@${vps_host}" || true
 
     printf "\n${BLUE}-- Krok 5/5 — Overenie --${NC}\n"
     local version=""
-    if version=$(verify_claude_remote "$vps_user" "$vps_host" "$vps_port" 2>/dev/null); then
-        :
+    if version=$(ssh -o BatchMode=yes -p "$vps_port" \
+                     -o StrictHostKeyChecking=accept-new \
+                     -o ConnectTimeout=15 \
+                     "${vps_user}@${vps_host}" "claude --version" 2>&1); then
+        version=$(printf "%s" "$version" | tail -n1)
+        print_success "Claude Code je pripravený (verzia: $version)."
     else
         version=""
+        print_warning "Skontroluj prihlásenie: ssh -p ${vps_port} ${vps_user}@${vps_host} potom: claude auth status"
     fi
-
-    [ -z "$version" ] || version=$(printf "%s" "$version" | tail -n1)
 
     print_summary_box "$vps_user" "$vps_host" "$vps_port" "$version" \
                       "$([ "$create_project" = "y" ] && echo "$project_path" || echo "")"
