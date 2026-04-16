@@ -374,9 +374,7 @@ print_summary_box() {
         ""
         "Posledný krok — prihlásenie:"
         "1. ssh -p ${port} ${user}@${host}"
-        "2. claude auth login"
-        "3. Otvor link v prehliadači na svojom počítači"
-        "4. Skopíruj kód späť do terminálu na VPS"
+        "2. claude"
     )
 
     local max=${#title} line
