@@ -35,6 +35,7 @@ bash setup-keylogin.sh
 | 02 | Sudo User + Zakáž Root Login                    | [02-sudo-user/](02-sudo-user/) | čoskoro |
 | 03 | UFW Firewall                                    | [03-firewall/](03-firewall/) | čoskoro |
 | 04 | Fail2ban — automatický ban brute-force útokov   | [04-fail2ban/](04-fail2ban/) | čoskoro |
+| 05 | Nginx + SSL — web server s HTTPS                | [05-nginx-ssl/](05-nginx-ssl/) | čoskoro |
 
 ---
 
