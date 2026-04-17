@@ -32,6 +32,7 @@ bash setup-keylogin.sh
 | #  | Téma                                            | Skript     | Video   |
 |----|-------------------------------------------------|------------|---------|
 | 01 | SSH Key Login — prihlásenie bez hesla           | [01-ssh/](01-ssh/) | čoskoro |
+| 01a | Záloha SSH kľúča na USB                        | [01-ssh/backup-ssh-key.sh](01-ssh/backup-ssh-key.sh) | čoskoro |
 | 02 | Sudo User + Zakáž Root Login                    | [02-sudo-user/](02-sudo-user/) | čoskoro |
 | 03 | UFW Firewall                                    | [03-firewall/](03-firewall/) | čoskoro |
 | 04 | Fail2ban — automatický ban brute-force útokov   | [04-fail2ban/](04-fail2ban/) | čoskoro |
