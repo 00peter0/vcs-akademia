@@ -164,11 +164,8 @@ print_summary_box() {
     printf "${GREEN}║${NC} ${BLUE}%s${NC}%*s${GREEN}║${NC}\n" "$title" $((width - ${#title} - 1)) ""
     printf "${GREEN}╠%s╣${NC}\n" "$border"
     for line in "${lines[@]}"; do
-    if [ -z "$line" ]; then
-    printf "${GREEN}║${NC}%*s  ${GREEN}║${NC}\n" $((width + 1)) ""
-    else
-    printf "${GREEN}║${NC}%s%*s${GREEN}║${NC}\n" "$line" $((width - ${#line} - 1)) ""
-    fi
+        local padding=$((width - ${#line} - 1))
+        printf "${GREEN}║${NC} %s%*s${GREEN}║${NC}\n" "$line" "$padding" ""
     done
     printf "${GREEN}╚%s╝${NC}\n" "$border"
     echo
