@@ -373,15 +373,15 @@ print_summary_box() {
     local domain="$1"
     echo
     printf "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}\n"
-    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 05${NC}                              ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC}   ${BLUE}VCS Akadémia — Epizóda 05${NC}     ${GREEN}║${NC}\n"
     printf "${GREEN}╠══════════════════════════════════════════════════════════╣${NC}\n"
-    printf "${GREEN}║${NC} ${GREEN}Nginx + SSL je aktívny${NC}                                   ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Web:           %-42s${GREEN}║${NC}\n" "https://${domain}"
-    printf "${GREEN}║${NC} Certifikát:    %-42s${GREEN}║${NC}\n" "Let's Encrypt (90 dní)"
-    printf "${GREEN}║${NC} Obnovovanie:   %-42s${GREEN}║${NC}\n" "automatické"
-    printf "${GREEN}║${NC}                                                          ${GREEN}║${NC}\n"
-    printf "${GREEN}║${NC} Web root:      %-42s${GREEN}║${NC}\n" "/var/www/${domain}"
-    printf "${GREEN}║${NC} Nginx config:  %-42s${GREEN}║${NC}\n" "/etc/nginx/sites-available/${domain}"
+    printf "${GREEN}║${NC} ${GREEN}Nginx + SSL je aktívny${NC}         ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} Web:           %-42s                        ${GREEN}║${NC}\n" "https://${domain}"
+    printf "${GREEN}║${NC} Certifikát:    %-42s                        ${GREEN}║${NC}\n" "Let's Encrypt (90 dní)"
+    printf "${GREEN}║${NC} Obnovovanie:   %-42s                        ${GREEN}║${NC}\n" "automatické"
+    printf "${GREEN}║${NC}                                             ${GREEN}║${NC}\n"
+    printf "${GREEN}║${NC} Web root:      %-42s                        ${GREEN}║${NC}\n" "/var/www/${domain}"
+    printf "${GREEN}║${NC} Nginx config:  %-42s                        ${GREEN}║${NC}\n" "/etc/nginx/sites-available/${domain}"
     printf "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}\n"
     echo
 }
